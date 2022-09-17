@@ -1,4 +1,6 @@
 import random
+import string
+
 import torch
 import torch.nn as nn
 import numpy as np
@@ -103,13 +105,13 @@ class RuleFilter(nn.Module):
             rho[self.tgt_vocab[list("(=")]] = 0
         # Rule 3
         elif prev_token == "=":
-            rho[self.tgt_vocab[list("+-*/=)")]] = 0
+            rho[self.tgt_vocab[list("+-*/=)1") + ["PI"] + [f"temp_{alpha}" for alpha in string.ascii_lowercase]]] = 0
         # Rule 4
         elif prev_token == "(":
             rho[self.tgt_vocab[list("()+-*/=")]] = 0
         # Rule 5
         elif prev_token == ")":
-            rho[self.tgt_vocab[list("()")]] = 0
+            rho[self.tgt_vocab[list("()1") + ["PI"] + [f"temp_{alpha}" for alpha in string.ascii_lowercase]]] = 0
         # Additional Rule
         elif prev_token == "^":
             rho[self.tgt_vocab[list("+-*/=)")]] = 0
@@ -123,13 +125,11 @@ class RuleFilter(nn.Module):
 
 def equation_accuracy(tgt_pred_equations):
     """
-
     Args:
         tgt_pred_equations: List[Tuple[str, str]]
     """
     correct = 0
     for tgt, pred in tgt_pred_equations:
-        print(tgt, "|", pred)
         if tgt == pred:
             correct += 1
     return correct / len(tgt_pred_equations)
