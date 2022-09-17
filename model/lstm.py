@@ -8,7 +8,7 @@ from utils import RuleFilter, equation_accuracy
 
 
 class Encoder(nn.Module):
-    def __init__(self, vocab_size, embed_size, hidden_size=512, num_layers=2, dropout=0.1):
+    def __init__(self, vocab_size, embed_size, hidden_size=512, num_layers=2, dropout=0.5):
         super().__init__()
         self.emebdding = nn.Embedding(vocab_size, embed_size, padding_idx=PAD_IDX)
         self.rnn = nn.GRU(embed_size, hidden_size, num_layers=num_layers, dropout=dropout)
@@ -25,7 +25,7 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, vocab_size, embed_size, hidden_size=512, num_layers=2, dropout=0.1):
+    def __init__(self, vocab_size, embed_size, hidden_size=512, num_layers=2, dropout=0.5):
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, embed_size, padding_idx=PAD_IDX)
         self.rnn = nn.LSTM(embed_size + hidden_size, hidden_size, num_layers=num_layers, dropout=dropout)
@@ -105,8 +105,8 @@ def inference(test_loader, model, rule_filter, device):
 # Parameter settings
 set_seed()
 BATCH_SIZE = 256
-LEARNING_RATE = 0.01
-NUM_EPOCHS = 80
+LEARNING_RATE = 0.005
+NUM_EPOCHS = 5
 
 train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
 test_loader = DataLoader(test_data, batch_size=1)
@@ -123,8 +123,9 @@ rule_filter = RuleFilter(tgt_vocab=tgt_vocab)
 # Training and testing
 if not os.path.exists('./params/model.pt'):
     train(train_loader, model, rule_filter, criterion, optimizer, NUM_EPOCHS, device)
+    model.load_state_dict(torch.load('./params/model.pt'))
 else:
     model.load_state_dict(torch.load('./params/model.pt'))
 tgt_pred_equations = inference(test_loader, model, rule_filter, device)
 accuracy = equation_accuracy(tgt_pred_equations)
-print("-" * 60 + f"\nEquation Accuracy: {accuracy:.4f}")
+print("-" * 60 + f"\nEquation Accuracy: {accuracy:.3f}")
