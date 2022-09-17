@@ -106,7 +106,7 @@ def inference(test_loader, model, rule_filter, device):
 set_seed()
 BATCH_SIZE = 256
 LEARNING_RATE = 0.005
-NUM_EPOCHS = 5
+NUM_EPOCHS = 80
 
 train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
 test_loader = DataLoader(test_data, batch_size=1)
@@ -121,11 +121,8 @@ optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 rule_filter = RuleFilter(tgt_vocab=tgt_vocab)
 
 # Training and testing
-if not os.path.exists('./params/model.pt'):
-    train(train_loader, model, rule_filter, criterion, optimizer, NUM_EPOCHS, device)
-    model.load_state_dict(torch.load('./params/model.pt'))
-else:
-    model.load_state_dict(torch.load('./params/model.pt'))
+train(train_loader, model, rule_filter, criterion, optimizer, NUM_EPOCHS, device)
+model.load_state_dict(torch.load('./params/model.pt'))
 tgt_pred_equations = inference(test_loader, model, rule_filter, device)
 accuracy = equation_accuracy(tgt_pred_equations)
 print("-" * 60 + f"\nEquation Accuracy: {accuracy:.3f}")
