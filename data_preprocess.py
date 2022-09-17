@@ -54,21 +54,28 @@ def build_data(vocab, tokens, max_len):
 set_seed()
 
 train_path = './data/train.json'
+valid_path = './data/valid.json'
 test_path = './data/test.json'
 
 # Add suffix to distinguish training set or test set.
 src_tokens_train, tgt_tokens_train, max_prob_len_train, max_eq_len_train = read_data(train_path)
+src_tokens_valid, tgt_tokens_valid, max_prob_len_valid, max_eq_len_valid = read_data(valid_path)
 src_tokens_test, tgt_tokens_test, max_prob_len_test, max_eq_len_test = read_data(test_path)
-max_prob_len = max(max_prob_len_train, max_prob_len_test)
-max_eq_len = max(max_eq_len_train, max_eq_len_test)
+max_prob_len = max(max_prob_len_train, max_prob_len_valid, max_prob_len_test)
+max_eq_len = max(max_eq_len_train, max_eq_len_valid, max_eq_len_test)
 
-src_vocab, tgt_vocab = Vocab(src_tokens_train + src_tokens_test), Vocab(tgt_tokens_train + tgt_tokens_test)
+src_vocab = Vocab(src_tokens_train + src_tokens_valid + src_tokens_test)
+tgt_vocab = Vocab(tgt_tokens_train + tgt_tokens_valid + tgt_tokens_test)
+
 src_data_train = build_data(src_vocab, src_tokens_train, max_len=max_prob_len)
 tgt_data_train = build_data(tgt_vocab, tgt_tokens_train, max_len=max_eq_len)
+src_data_valid = build_data(src_vocab, src_tokens_valid, max_len=max_prob_len)
+tgt_data_valid = build_data(tgt_vocab, tgt_tokens_valid, max_len=max_eq_len)
 src_data_test = build_data(src_vocab, src_tokens_test, max_len=max_prob_len)
 tgt_data_test = build_data(tgt_vocab, tgt_tokens_test, max_len=max_eq_len)
 
 train_data = TensorDataset(src_data_train, tgt_data_train)
+valid_data = TensorDataset(src_data_valid, tgt_data_valid)
 test_data = TensorDataset(src_data_test, tgt_data_test)
 
 # Special tokens

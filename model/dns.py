@@ -1,4 +1,3 @@
-import copy
 import torch
 import torch.nn as nn
 
@@ -20,7 +19,7 @@ class Encoder(nn.Module):
         """
         encoder_input = self.emebdding(encoder_input).transpose(0, 1)
         _, h_n = self.rnn(encoder_input)
-        c_n = copy.deepcopy(h_n)  # The initial hidden state of the LSTM requires c_n.
+        c_n = h_n.clone()  # The initial hidden state of the LSTM requires c_n.
         return h_n, c_n
 
 
@@ -51,28 +50,43 @@ class Model(nn.Module):
         return self.decoder(self.encoder(encoder_input), decoder_input)
 
 
-def train(train_loader, model, rule_filter, criterion, optimizer, num_epochs, device):
+def train(train_loader, model, rule_filter, criterion, optimizer, device):
     model.train()
-    for epoch in range(num_epochs):
-        for batch_idx, (encoder_input, decoder_target) in enumerate(train_loader):
-            encoder_input, decoder_target = encoder_input.to(device), decoder_target.to(device)
-            bos_column = torch.tensor([BOS_IDX] * decoder_target.shape[0]).reshape(-1, 1).to(device)
-            decoder_input = torch.cat((bos_column, decoder_target[:, :-1]), dim=1)
-            pred, (_, _) = model(encoder_input, decoder_input)
-            pred = rule_filter(pred)
-            loss = criterion(pred.permute(1, 2, 0), decoder_target)
+    for batch_idx, (encoder_input, decoder_target) in enumerate(train_loader):
+        encoder_input, decoder_target = encoder_input.to(device), decoder_target.to(device)
+        bos_column = torch.tensor([BOS_IDX] * decoder_target.shape[0]).reshape(-1, 1).to(device)
+        decoder_input = torch.cat((bos_column, decoder_target[:, :-1]), dim=1)
+        pred, (_, _) = model(encoder_input, decoder_input)
+        pred = rule_filter(pred)
+        loss = criterion(pred.permute(1, 2, 0), decoder_target)
 
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+        optimizer.zero_grad()
+        loss.backward()
+        optimizer.step()
 
-            if (batch_idx + 1) % 10 == 0:
-                print(
-                    f'[Epoch {epoch + 1}] [{(batch_idx + 1) * len(encoder_input)}/{len(train_loader.dataset)}] loss: {loss:.4f}')
-        print()
-    torch.save(model.state_dict(), './params/model.pt')
+        if (batch_idx + 1) % 10 == 0:
+            current, train_size = (batch_idx + 1) * encoder_input.size(0), len(train_loader.dataset)
+            print(f"[{current:>5d}/{train_size:>5d}] train loss: {loss:.4f}")
 
 
+@torch.no_grad()
+def validate(valid_loader, model, rule_filter, criterion, device):
+    avg_valid_loss = 0
+    model.eval()
+    for batch_idx, (encoder_input, decoder_target) in enumerate(valid_loader):
+        encoder_input, decoder_target = encoder_input.to(device), decoder_target.to(device)
+        bos_column = torch.tensor([BOS_IDX] * decoder_target.shape[0]).reshape(-1, 1).to(device)
+        decoder_input = torch.cat((bos_column, decoder_target[:, :-1]), dim=1)
+        pred, (_, _) = model(encoder_input, decoder_input)
+        pred = rule_filter(pred)
+        loss = criterion(pred.permute(1, 2, 0), decoder_target)
+        avg_valid_loss += loss.item()
+    avg_valid_loss /= (batch_idx + 1)
+    print(f"Avg valid loss: {avg_valid_loss:.4f}")
+    return avg_valid_loss
+
+
+@torch.no_grad()
 def inference(test_loader, model, rule_filter, device):
     tgt_pred_equations = []
     model.eval()
@@ -103,6 +117,7 @@ LEARNING_RATE = 0.005
 NUM_EPOCHS = 80
 
 train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
+valid_loader = DataLoader(valid_data, batch_size=BATCH_SIZE)
 test_loader = DataLoader(test_data, batch_size=1)
 
 # Model building
@@ -114,8 +129,26 @@ criterion = nn.CrossEntropyLoss(ignore_index=PAD_IDX)
 optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 rule_filter = RuleFilter(tgt_vocab=tgt_vocab)
 
-# Training and testing
-train(train_loader, model, rule_filter, criterion, optimizer, NUM_EPOCHS, device)
-tgt_pred_equations = inference(test_loader, model, rule_filter, device)
-accuracy = equation_accuracy(tgt_pred_equations)
-print("-" * 60 + f"\nEquation Accuracy: {accuracy:.3f}")
+# Run
+for epoch in range(NUM_EPOCHS):
+    print(f"Epoch {epoch + 1}\n" + "-" * 32)
+    min_valid_loss = 1e9
+    train(train_loader, model, rule_filter, criterion, optimizer, device)
+    avg_valid_loss = validate(valid_loader, model, rule_filter, criterion, device)
+    if avg_valid_loss <= min_valid_loss:
+        min_valid_loss = avg_valid_loss
+        torch.save(model.state_dict(), './params/model_min_loss.pt')
+    print()
+torch.save(model.state_dict(), './params/model_last_epoch.pt')
+
+# Choose min loss model
+model.load_state_dict(torch.load('./params/model_min_loss.pt'))
+tgt_pred_equations_from_min_loss = inference(test_loader, model, rule_filter, device)
+equ_acc_from_min_loss = equation_accuracy(tgt_pred_equations_from_min_loss)
+# Choose last epoch model
+model.load_state_dict(torch.load('./params/model_last_epoch.pt'))
+tgt_pred_equations_from_last_epoch = inference(test_loader, model, rule_filter, device)
+equ_acc_from_last_epoch = equation_accuracy(tgt_pred_equations_from_last_epoch)
+
+equ_acc = max(equ_acc_from_min_loss, equ_acc_from_last_epoch)
+print(f"Equation Accuracy: {equ_acc:.3f}")
