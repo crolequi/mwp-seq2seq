@@ -156,6 +156,7 @@ equ_acc_from_last_epoch = equation_accuracy(tgt_pred_equations_from_last_epoch)
 equ_acc = max(equ_acc_from_min_loss, equ_acc_from_last_epoch)
 toc = time.time()
 
+# Calculate time
 m, s = divmod(int(toc - tic), 60)
 h, m = divmod(m, 60)
 
