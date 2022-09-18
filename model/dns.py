@@ -113,8 +113,8 @@ def inference(test_loader, model, rule_filter, device):
 # Parameter settings
 set_seed()
 BATCH_SIZE = 256
-LEARNING_RATE = 0.005
-NUM_EPOCHS = 80
+LEARNING_RATE = 0.01
+NUM_EPOCHS = 10
 
 train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
 valid_loader = DataLoader(valid_data, batch_size=BATCH_SIZE)
@@ -137,18 +137,18 @@ for epoch in range(NUM_EPOCHS):
     avg_valid_loss = validate(valid_loader, model, rule_filter, criterion, device)
     if avg_valid_loss <= min_valid_loss:
         min_valid_loss = avg_valid_loss
-        torch.save(model.state_dict(), './params/model_min_loss.pt')
+        torch.save(model.state_dict(), './params/dns_min_loss.pt')
     print()
-torch.save(model.state_dict(), './params/model_last_epoch.pt')
+torch.save(model.state_dict(), './params/dns_last_epoch.pt')
 
 # Choose min loss model
-model.load_state_dict(torch.load('./params/model_min_loss.pt'))
+model.load_state_dict(torch.load('./params/dns_min_loss.pt'))
 tgt_pred_equations_from_min_loss = inference(test_loader, model, rule_filter, device)
 equ_acc_from_min_loss = equation_accuracy(tgt_pred_equations_from_min_loss)
 # Choose last epoch model
-model.load_state_dict(torch.load('./params/model_last_epoch.pt'))
+model.load_state_dict(torch.load('./params/dns_last_epoch.pt'))
 tgt_pred_equations_from_last_epoch = inference(test_loader, model, rule_filter, device)
 equ_acc_from_last_epoch = equation_accuracy(tgt_pred_equations_from_last_epoch)
 
 equ_acc = max(equ_acc_from_min_loss, equ_acc_from_last_epoch)
-print(f"Equation Accuracy: {equ_acc:.3f}")
+print("-" * 32, f"\nEquation Accuracy: {equ_acc:.3f}\n", "-" * 32)
