@@ -47,8 +47,7 @@ def pad_sequence(sequence, max_len):
 
 
 def build_data(vocab, tokens, max_len):
-    return torch.tensor([vocab[pad_sequence(line + ['<eos>'], max_len + 1)]
-                         for line in tokens])  # max_len + 1 is because of <eos> token
+    return torch.tensor([vocab[pad_sequence(line + ['<eos>'], max_len + 1)] for line in tokens])  # max_len + 1 is because of <eos> token
 
 
 set_seed()

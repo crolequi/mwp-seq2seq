@@ -19,7 +19,7 @@ class Encoder(nn.Module):
         """
         encoder_input = self.emebdding(encoder_input).transpose(0, 1)
         _, h_n = self.rnn(encoder_input)
-        c_n = h_n.clone()  # The initial hidden state of the LSTM requires c_n.
+        c_n = torch.zeros_like(h_n)  # The initial hidden state of the LSTM requires c_n.
         return h_n, c_n
 
 
@@ -96,8 +96,8 @@ def inference(test_loader, model, rule_filter, device):
         pred_seq = [BOS_IDX]
         for _ in range(max_eq_len):
             decoder_input = torch.tensor(pred_seq[-1]).reshape(1, 1).to(device)  # (batch_size, seq_len)=(1, 1)
-            pred, (h_n, c_n) = model.decoder(
-                (h_n, c_n), decoder_input)  # pred shape: (seq_len, batch_size, tgt_vocab_size)=(1, 1, tgt_vocab_size)
+            pred, (h_n, c_n) = model.decoder((h_n, c_n),
+                                             decoder_input)  # pred shape: (seq_len, batch_size, tgt_vocab_size)=(1, 1, tgt_vocab_size)
             pred = rule_filter.single_filter(decoder_input.squeeze(), pred.squeeze())
             next_token_idx = pred.argmax().item()
             if next_token_idx == EOS_IDX:
@@ -113,8 +113,8 @@ def inference(test_loader, model, rule_filter, device):
 # Parameter settings
 set_seed()
 BATCH_SIZE = 256
-LEARNING_RATE = 0.01
-NUM_EPOCHS = 10
+LEARNING_RATE = 0.001
+NUM_EPOCHS = 5
 
 train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
 valid_loader = DataLoader(valid_data, batch_size=BATCH_SIZE)
@@ -137,18 +137,18 @@ for epoch in range(NUM_EPOCHS):
     avg_valid_loss = validate(valid_loader, model, rule_filter, criterion, device)
     if avg_valid_loss <= min_valid_loss:
         min_valid_loss = avg_valid_loss
-        torch.save(model.state_dict(), './params/dns_min_loss.pt')
+        torch.save(model.state_dict(), './params/vanilla_min_loss.pt')
     print()
-torch.save(model.state_dict(), './params/dns_last_epoch.pt')
+torch.save(model.state_dict(), './params/vanilla_last_epoch.pt')
 
 # Choose min loss model
-model.load_state_dict(torch.load('./params/dns_min_loss.pt'))
+model.load_state_dict(torch.load('./params/vanilla_min_loss.pt'))
 tgt_pred_equations_from_min_loss = inference(test_loader, model, rule_filter, device)
 equ_acc_from_min_loss = equation_accuracy(tgt_pred_equations_from_min_loss)
 # Choose last epoch model
-model.load_state_dict(torch.load('./params/dns_last_epoch.pt'))
+model.load_state_dict(torch.load('./params/vanilla_last_epoch.pt'))
 tgt_pred_equations_from_last_epoch = inference(test_loader, model, rule_filter, device)
 equ_acc_from_last_epoch = equation_accuracy(tgt_pred_equations_from_last_epoch)
 
 equ_acc = max(equ_acc_from_min_loss, equ_acc_from_last_epoch)
-print("-" * 32, f"\nEquation Accuracy: {equ_acc:.3f}\n", "-" * 32)
+print("-" * 32 + f"\nEquation Accuracy: {equ_acc:.3f}\n" + "-" * 32)

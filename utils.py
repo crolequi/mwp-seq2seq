@@ -10,7 +10,7 @@ from tkinter import _flatten
 
 
 class Vocab:
-    def __init__(self, tokens, min_count=1, special_tokens=['<unk>', '<pad>', '<bos>', '<eos>']):
+    def __init__(self, tokens, min_count=2, special_tokens=['<unk>', '<pad>', '<bos>', '<eos>']):
         """Building vocabulary from tokens.
 
         Args:
@@ -130,6 +130,7 @@ def equation_accuracy(tgt_pred_equations):
     """
     correct = 0
     for tgt, pred in tgt_pred_equations:
+        print(tgt, "|", pred)
         if tgt == pred:
             correct += 1
     return correct / len(tgt_pred_equations)
