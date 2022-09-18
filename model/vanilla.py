@@ -1,3 +1,4 @@
+import time
 import torch
 import torch.nn as nn
 
@@ -114,7 +115,7 @@ def inference(test_loader, model, rule_filter, device):
 set_seed()
 BATCH_SIZE = 256
 LEARNING_RATE = 0.001
-NUM_EPOCHS = 5
+NUM_EPOCHS = 80
 
 train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
 valid_loader = DataLoader(valid_data, batch_size=BATCH_SIZE)
@@ -130,6 +131,7 @@ optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 rule_filter = RuleFilter(tgt_vocab=tgt_vocab)
 
 # Run
+tic = time.time()
 for epoch in range(NUM_EPOCHS):
     print(f"Epoch {epoch + 1}\n" + "-" * 32)
     min_valid_loss = 1e9
@@ -145,10 +147,17 @@ torch.save(model.state_dict(), './params/vanilla_last_epoch.pt')
 model.load_state_dict(torch.load('./params/vanilla_min_loss.pt'))
 tgt_pred_equations_from_min_loss = inference(test_loader, model, rule_filter, device)
 equ_acc_from_min_loss = equation_accuracy(tgt_pred_equations_from_min_loss)
+
 # Choose last epoch model
 model.load_state_dict(torch.load('./params/vanilla_last_epoch.pt'))
 tgt_pred_equations_from_last_epoch = inference(test_loader, model, rule_filter, device)
 equ_acc_from_last_epoch = equation_accuracy(tgt_pred_equations_from_last_epoch)
 
 equ_acc = max(equ_acc_from_min_loss, equ_acc_from_last_epoch)
+toc = time.time()
+
+m, s = divmod(int(toc - tic), 60)
+h, m = divmod(m, 60)
+
 print("-" * 32 + f"\nEquation Accuracy: {equ_acc:.3f}\n" + "-" * 32)
+print(f"{h}h {m}m {s}s")
