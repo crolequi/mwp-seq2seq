@@ -14,25 +14,14 @@ def read_data(path):
     Returns:
         problems: List[List]
         equations: List[List]
-        max_prob_len: int
-        max_eq_len: int
-        number_mappings: List[List]
     """
     problems, equations = [], []
-    max_prob_len, max_eq_len = 0, 0
     with open(path, mode='r', encoding='utf-8') as f:
         data_list = json.load(f)
     for data in data_list:
-        single_problem, single_equation = list(data["text"].split()), data["target_template"]
-        # Get max length
-        if max_prob_len <= len(single_problem):
-            max_prob_len = len(single_problem)
-        if max_eq_len <= len(single_equation):
-            max_eq_len = len(single_equation)
-        # Append
-        problems.append(single_problem)
-        equations.append(single_equation)
-    return problems, equations, max_prob_len, max_eq_len
+        problems.append(list(data["text"].split()))
+        equations.append(list(data["template_equ"].split()))
+    return problems, equations
 
 
 def pad_sequence(sequence, max_len):
@@ -47,34 +36,28 @@ def pad_sequence(sequence, max_len):
 
 
 def build_data(vocab, tokens, max_len):
-    return torch.tensor([vocab[pad_sequence(line + ['<eos>'], max_len + 1)] for line in tokens])  # max_len + 1 is because of <eos> token
+    return torch.tensor([vocab[pad_sequence(line + ['<eos>'], max_len)] for line in tokens])  # max_len + 1 is because of <eos> token
 
 
 set_seed()
-
-train_path = './data/train.json'
-valid_path = './data/valid.json'
-test_path = './data/test.json'
+train_path, test_path = './data/train.json', './data/test.json'
 
 # Add suffix to distinguish training set or test set.
-src_tokens_train, tgt_tokens_train, max_prob_len_train, max_eq_len_train = read_data(train_path)
-src_tokens_valid, tgt_tokens_valid, max_prob_len_valid, max_eq_len_valid = read_data(valid_path)
-src_tokens_test, tgt_tokens_test, max_prob_len_test, max_eq_len_test = read_data(test_path)
-max_prob_len = max(max_prob_len_train, max_prob_len_valid, max_prob_len_test)
-max_eq_len = max(max_eq_len_train, max_eq_len_valid, max_eq_len_test)
+src_tokens_train, tgt_tokens_train = read_data(train_path)
+src_tokens_test, tgt_tokens_test = read_data(test_path)
+src_tokens = src_tokens_train + src_tokens_test
+tgt_tokens = tgt_tokens_train + tgt_tokens_test
 
-src_vocab = Vocab(src_tokens_train + src_tokens_valid + src_tokens_test)
-tgt_vocab = Vocab(tgt_tokens_train + tgt_tokens_valid + tgt_tokens_test)
+max_src_len, max_tgt_len = 80, 30
 
-src_data_train = build_data(src_vocab, src_tokens_train, max_len=max_prob_len)
-tgt_data_train = build_data(tgt_vocab, tgt_tokens_train, max_len=max_eq_len)
-src_data_valid = build_data(src_vocab, src_tokens_valid, max_len=max_prob_len)
-tgt_data_valid = build_data(tgt_vocab, tgt_tokens_valid, max_len=max_eq_len)
-src_data_test = build_data(src_vocab, src_tokens_test, max_len=max_prob_len)
-tgt_data_test = build_data(tgt_vocab, tgt_tokens_test, max_len=max_eq_len)
+src_vocab, tgt_vocab = Vocab(src_tokens), Vocab(tgt_tokens)
+
+src_data_train = build_data(src_vocab, src_tokens_train, max_len=max_src_len)
+tgt_data_train = build_data(tgt_vocab, tgt_tokens_train, max_len=max_tgt_len)
+src_data_test = build_data(src_vocab, src_tokens_test, max_len=max_src_len)
+tgt_data_test = build_data(tgt_vocab, tgt_tokens_test, max_len=max_tgt_len)
 
 train_data = TensorDataset(src_data_train, tgt_data_train)
-valid_data = TensorDataset(src_data_valid, tgt_data_valid)
 test_data = TensorDataset(src_data_test, tgt_data_test)
 
 # Special tokens

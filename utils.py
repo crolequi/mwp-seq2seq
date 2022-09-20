@@ -10,7 +10,7 @@ from tkinter import _flatten
 
 
 class Vocab:
-    def __init__(self, tokens, min_count=2, special_tokens=['<unk>', '<pad>', '<bos>', '<eos>']):
+    def __init__(self, tokens, min_count=1, special_tokens=['<unk>', '<pad>', '<bos>', '<eos>']):
         """Building vocabulary from tokens.
 
         Args:
@@ -101,17 +101,17 @@ class RuleFilter(nn.Module):
         if prev_token in "+-*/":
             rho[self.tgt_vocab[list("+-*/)=")]] = 0  # Set the position corresponding to the illegal token to 0
         # Rule 2
-        elif "temp" in prev_token or prev_token == "1" or prev_token == "PI":
+        elif "temp" in prev_token:
             rho[self.tgt_vocab[list("(=")]] = 0
         # Rule 3
         elif prev_token == "=":
-            rho[self.tgt_vocab[list("+-*/=)1") + ["PI"] + [f"temp_{alpha}" for alpha in string.ascii_lowercase]]] = 0
+            rho[self.tgt_vocab[list("+-*/=)") + [f"temp_{alpha}" for alpha in string.ascii_lowercase]]] = 0
         # Rule 4
         elif prev_token == "(":
             rho[self.tgt_vocab[list("()+-*/=")]] = 0
         # Rule 5
         elif prev_token == ")":
-            rho[self.tgt_vocab[list("()1") + ["PI"] + [f"temp_{alpha}" for alpha in string.ascii_lowercase]]] = 0
+            rho[self.tgt_vocab[list("()") + [f"temp_{alpha}" for alpha in string.ascii_lowercase]]] = 0
         # Additional Rule
         elif prev_token == "^":
             rho[self.tgt_vocab[list("+-*/=)")]] = 0
@@ -123,14 +123,28 @@ class RuleFilter(nn.Module):
         return cur
 
 
-def equation_accuracy(tgt_pred_equations):
+def equation_accuracy(tgt_pred_equations, verbose=False):
     """
     Args:
         tgt_pred_equations: List[Tuple[str, str]]
     """
     correct = 0
     for tgt, pred in tgt_pred_equations:
-        print(tgt, "|", pred)
+        if verbose:
+            print(tgt, "|", pred)
         if tgt == pred:
             correct += 1
+    if verbose:
+        print()
     return correct / len(tgt_pred_equations)
+
+
+def s2hms(s):
+    """Convert seconds to hours, minutes and seconds format
+
+    Args:
+        s: seconds, int or str
+    """
+    m, s = divmod(int(s), 60)
+    h, m = divmod(m, 60)
+    return h, m, s
