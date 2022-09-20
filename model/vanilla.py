@@ -8,7 +8,7 @@ from utils import RuleFilter, equation_accuracy, s2hms
 
 
 class Encoder(nn.Module):
-    def __init__(self, vocab_size, embed_size, hidden_size=512, num_layers=2, dropout=0.5):
+    def __init__(self, vocab_size, embed_size, hidden_size=256, num_layers=2, dropout=0.5):
         super().__init__()
         self.emebdding = nn.Embedding(vocab_size, embed_size, padding_idx=PAD_IDX)
         self.rnn = nn.GRU(embed_size, hidden_size, num_layers=num_layers, dropout=dropout)
@@ -25,7 +25,7 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, vocab_size, embed_size, hidden_size=512, num_layers=2, dropout=0.5):
+    def __init__(self, vocab_size, embed_size, hidden_size=256, num_layers=2, dropout=0.5):
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, embed_size, padding_idx=PAD_IDX)
         self.rnn = nn.LSTM(embed_size + hidden_size, hidden_size, num_layers=num_layers, dropout=dropout)
@@ -65,7 +65,7 @@ def train(train_loader, model, rule_filter, criterion, optimizer, device):
         loss.backward()
         optimizer.step()
 
-        if (batch_idx + 1) % 10 == 0:
+        if (batch_idx + 1) % 2 == 0:
             current, train_size = (batch_idx + 1) * encoder_input.size(0), len(train_loader.dataset)
             print(f"[{current:>5d}/{train_size:>5d}] train loss: {loss:.4f}")
 
@@ -94,11 +94,29 @@ def inference(test_loader, model, rule_filter, device):
     return tgt_pred_equations
 
 
+class LRScheduler:
+    def __init__(self, optimizer):
+        self.optimizer = optimizer
+        self.num_epoch = 0
+        self.step()
+
+    def step(self):
+        if self.num_epoch <= 60:
+            new_lr = 0.001
+        elif 60 < self.num_epoch <= 100:
+            new_lr = 0.001 * (1.75 - 0.0125 * self.num_epoch)
+        else:
+            new_lr = 0.0005
+        for group in self.optimizer.param_groups:
+            group["lr"] = new_lr
+        self.num_epoch += 1
+
+
 # Parameter settings
 set_seed()
-BATCH_SIZE = 256
+BATCH_SIZE = 128
 LEARNING_RATE = 0.001
-NUM_EPOCHS = 10  # One epoch takes about 3 min on RTX 3090 GPU.
+NUM_EPOCHS = 100  # One epoch takes about 3 min on RTX 3090 GPU.
 
 train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
 test_loader = DataLoader(test_data, batch_size=1)
@@ -106,10 +124,11 @@ test_loader = DataLoader(test_data, batch_size=1)
 # Model building
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 encoder = Encoder(vocab_size=len(src_vocab), embed_size=256)
-decoder = Decoder(vocab_size=len(tgt_vocab), embed_size=128)
+decoder = Decoder(vocab_size=len(tgt_vocab), embed_size=256)
 model = Model(encoder, decoder).to(device)
 criterion = nn.CrossEntropyLoss(ignore_index=PAD_IDX)
 optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+scheduler = LRScheduler(optimizer)
 rule_filter = RuleFilter(tgt_vocab=tgt_vocab)
 
 # Run
@@ -117,6 +136,7 @@ tic = time.time()
 for epoch in range(NUM_EPOCHS):
     print(f"Epoch {epoch + 1}\n" + "-" * 32)
     train(train_loader, model, rule_filter, criterion, optimizer, device)
+    scheduler.step()
     print()
 
 torch.save(model.state_dict(), './params/vanilla.pt')

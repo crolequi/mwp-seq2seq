@@ -20,7 +20,7 @@ def read_data(path):
         data_list = json.load(f)
     for data in data_list:
         problems.append(list(data["text"].split()))
-        equations.append(list(data["template_equ"].split()))
+        equations.append(list(data["template_equ"].split())[2:])  # remove x=
     return problems, equations
 
 
