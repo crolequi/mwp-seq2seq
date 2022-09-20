@@ -14,7 +14,7 @@ Apply the seq2seq model on the MAWPS dataset.
 |`model/bilstm.py`|Bi-LSTM|Bi-LSTM|LSTM+Attn|  |
 |`model/tfm.py`|Transformer|Transformer|Transformer|  |
 
-
+</div>
 
 
 
