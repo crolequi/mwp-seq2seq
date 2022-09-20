@@ -1,34 +1,21 @@
 # mwp-seq2seq
 
-Apply the seq2seq model on the MAWPS dataset
+Apply the seq2seq model on the MAWPS dataset.
 
 ## Comparison of different models
 
-Architecture:
+
 
 <div align="center">
 
-|filename|model | Encoder|Decoder|
-|:-:|:-:|:-:|:-:|
-|`model/vanilla.py`|Vanilla|GRU|LSTM|
-|`model/bilstm.py`|Bi-LSTM|Bi-LSTM|LSTM+Attn|
-|`model/tfm.py`|Transformer|Transformer|Transformer|
+|filename|model | Encoder|Decoder|Equ. Acc|
+|:-:|:-:|:-:|:-:|:-:|
+|`model/vanilla.py`|Vanilla|GRU|LSTM|28.5|
+|`model/bilstm.py`|Bi-LSTM|Bi-LSTM|LSTM+Attn|  |
+|`model/tfm.py`|Transformer|Transformer|Transformer|  |
 
 
 
-
-</div>
-
-Performance:
-
-<div align="center">
-
-| model| Equ. Acc|
-|:-:|:-:|
-|Vanilla| 28.5|
-
-
-</div>
 
 
 
