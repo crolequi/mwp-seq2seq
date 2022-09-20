@@ -101,12 +101,12 @@ class LRScheduler:
         self.step()
 
     def step(self):
-        if self.num_epoch <= 60:
+        if self.num_epoch <= 20:
+            new_lr = 0.01
+        elif 20 < self.num_epoch <= 60:
             new_lr = 0.001
-        elif 60 < self.num_epoch <= 100:
-            new_lr = 0.001 * (1.75 - 0.0125 * self.num_epoch)
         else:
-            new_lr = 0.0005
+            new_lr = 0.0001
         for group in self.optimizer.param_groups:
             group["lr"] = new_lr
         self.num_epoch += 1
@@ -115,7 +115,7 @@ class LRScheduler:
 # Parameter settings
 set_seed()
 BATCH_SIZE = 128
-LEARNING_RATE = 0.001
+LEARNING_RATE = 0.01
 NUM_EPOCHS = 100  # One epoch takes about 3 min on RTX 3090 GPU.
 
 train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
