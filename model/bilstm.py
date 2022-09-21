@@ -5,7 +5,7 @@ import torch.nn as nn
 from data_preprocess import *
 from torch.utils.data import DataLoader
 from arch.mha import MultiHeadAttention
-from utils import RuleFilter, equation_accuracy, s2hms
+from utils import equation_accuracy, s2hms
 
 
 class Encoder(nn.Module):
@@ -56,14 +56,13 @@ class Model(nn.Module):
         return self.decoder(decoder_input, *self.encoder(encoder_input))
 
 
-def train(train_loader, model, rule_filter, criterion, optimizer, device):
+def train(train_loader, model, criterion, optimizer, device):
     model.train()
     for batch_idx, (encoder_input, decoder_target) in enumerate(train_loader):
         encoder_input, decoder_target = encoder_input.to(device), decoder_target.to(device)
         bos_column = torch.tensor([BOS_IDX] * decoder_target.shape[0]).reshape(-1, 1).to(device)
         decoder_input = torch.cat((bos_column, decoder_target[:, :-1]), dim=1)
         pred, (_, _) = model(encoder_input, decoder_input)
-        pred = rule_filter(pred)
         loss = criterion(pred.permute(1, 2, 0), decoder_target)
 
         optimizer.zero_grad()
@@ -76,7 +75,7 @@ def train(train_loader, model, rule_filter, criterion, optimizer, device):
 
 
 @torch.no_grad()
-def inference(test_loader, model, rule_filter, device):
+def inference(test_loader, model, device):
     tgt_pred_equations = []
     model.eval()
     for src_seq, tgt_seq in test_loader:
@@ -87,8 +86,7 @@ def inference(test_loader, model, rule_filter, device):
             decoder_input = torch.tensor(pred_seq[-1]).reshape(1, 1).to(device)  # (batch_size, seq_len)=(1, 1)
             pred, (h_n, c_n) = model.decoder(decoder_input, encoder_output, h_n,
                                              c_n)  # pred shape: (seq_len, batch_size, tgt_vocab_size)=(1, 1, tgt_vocab_size)
-            pred = rule_filter.single_filter(decoder_input.squeeze(), pred.squeeze())
-            next_token_idx = pred.argmax().item()
+            next_token_idx = pred.squeeze().argmax().item()
             if next_token_idx == EOS_IDX:
                 break
             pred_seq.append(next_token_idx)
@@ -134,18 +132,17 @@ model = Model(encoder, decoder).to(device)
 criterion = nn.CrossEntropyLoss(ignore_index=PAD_IDX)
 optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 scheduler = LRScheduler(optimizer)
-rule_filter = RuleFilter(tgt_vocab=tgt_vocab)
 
 # Run
 tic = time.time()
 for epoch in range(NUM_EPOCHS):
     print(f"Epoch {epoch + 1}\n" + "-" * 32)
-    train(train_loader, model, rule_filter, criterion, optimizer, device)
+    train(train_loader, model, criterion, optimizer, device)
     scheduler.step()
     print()
 
 torch.save(model.state_dict(), './params/vanilla.pt')
-tgt_pred_equations = inference(test_loader, model, rule_filter, device)
+tgt_pred_equations = inference(test_loader, model, device)
 equ_acc = equation_accuracy(tgt_pred_equations, verbose=True)
 toc = time.time()
 
