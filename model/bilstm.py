@@ -30,7 +30,7 @@ class Decoder(nn.Module):
     def __init__(self, vocab_size, embed_size, hidden_size=256, num_layers=2, dropout=0.5):
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, embed_size, padding_idx=PAD_IDX)
-        self.attn = MultiHeadAttention(embed_dim=2 * hidden_size, num_heads=8)
+        self.attn = MultiHeadAttention(embed_dim=2 * hidden_size, num_heads=1)
         self.rnn = nn.LSTM(embed_size + 2 * hidden_size, 2 * hidden_size, num_layers=num_layers, dropout=dropout)
         self.out = nn.Linear(2 * hidden_size, vocab_size)
 
@@ -121,7 +121,7 @@ class LRScheduler:
 set_seed()
 BATCH_SIZE = 128
 LEARNING_RATE = 0.01
-NUM_EPOCHS = 1
+NUM_EPOCHS = 100
 
 train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
 test_loader = DataLoader(test_data, batch_size=1)

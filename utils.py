@@ -115,6 +115,8 @@ class RuleFilter(nn.Module):
         else:
             pass
 
+        rho[self.tgt_vocab['<unk>']] = 0
+
         # Element-wise product
         cur = cur * rho
         return cur
