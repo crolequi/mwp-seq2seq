@@ -144,7 +144,7 @@ class LRScheduler:
         self.optimizer = optimizer
         self.d_model = d_model
         self.warmup_steps = warmup_steps
-        self.num_step = 0
+        self.num_step = 1
 
         self.step()
 
@@ -180,7 +180,7 @@ for epoch in range(NUM_EPOCHS):
 
 torch.save(model.state_dict(), './params/tfm.pt')
 tgt_pred_equations = inference(test_loader, model, device)
-equ_acc = equation_accuracy(tgt_pred_equations, verbose=True)
+equ_acc = equation_accuracy(tgt_pred_equations)
 toc = time.time()
 
 # Output

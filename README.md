@@ -12,7 +12,7 @@ Apply the seq2seq model on the MAWPS dataset.
 |:-:|:-:|:-:|:-:|:-:|
 |`model/vanilla.py`|Vanilla|GRU|LSTM|0.463|
 |`model/bilstm.py`|Bi-LSTM|Bi-LSTM|LSTM+Attn| 0.640  |
-|`model/tfm.py`|Transformer|Transformer|Transformer|  |
+|`model/tfm.py`|Transformer|Transformer|Transformer|0.720  |
 
 </div>
 

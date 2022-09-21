@@ -138,7 +138,7 @@ for epoch in range(NUM_EPOCHS):
 
 torch.save(model.state_dict(), './params/vanilla.pt')
 tgt_pred_equations = inference(test_loader, model, device)
-equ_acc = equation_accuracy(tgt_pred_equations, verbose=True)
+equ_acc = equation_accuracy(tgt_pred_equations)
 toc = time.time()
 
 # Output

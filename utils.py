@@ -62,12 +62,8 @@ def equation_accuracy(tgt_pred_equations, verbose=False):
     """
     correct = 0
     for tgt, pred in tgt_pred_equations:
-        if verbose:
-            print(tgt, "|", pred)
         if tgt == pred:
             correct += 1
-    if verbose:
-        print()
     return correct / len(tgt_pred_equations)
 
 
