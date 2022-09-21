@@ -9,7 +9,7 @@ from utils import equation_accuracy, s2hms
 
 
 class Encoder(nn.Module):
-    def __init__(self, vocab_size, embed_size, hidden_size=256, num_layers=2, dropout=0.5):
+    def __init__(self, vocab_size, embed_size, hidden_size=256, num_layers=2, dropout=0.1):
         super().__init__()
         self.emebdding = nn.Embedding(vocab_size, embed_size, padding_idx=PAD_IDX)
         self.rnn = nn.LSTM(embed_size, hidden_size, num_layers=num_layers, dropout=dropout, bidirectional=True)
@@ -27,7 +27,7 @@ class Encoder(nn.Module):
 
 
 class Decoder(nn.Module):
-    def __init__(self, vocab_size, embed_size, hidden_size=256, num_layers=2, dropout=0.5):
+    def __init__(self, vocab_size, embed_size, hidden_size=256, num_layers=2, dropout=0.1):
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, embed_size, padding_idx=PAD_IDX)
         self.attn = MultiHeadAttention(embed_dim=2 * hidden_size, num_heads=1)

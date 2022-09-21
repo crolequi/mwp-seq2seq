@@ -10,8 +10,8 @@ Apply the seq2seq model on the MAWPS dataset.
 
 |filename|model | Encoder|Decoder|Equ. Acc|
 |:-:|:-:|:-:|:-:|:-:|
-|`model/vanilla.py`|Vanilla|GRU|LSTM|34.3|
-|`model/bilstm.py`|Bi-LSTM|Bi-LSTM|LSTM+Attn|  |
+|`model/vanilla.py`|Vanilla|GRU|LSTM|0.463|
+|`model/bilstm.py`|Bi-LSTM|Bi-LSTM|LSTM+Attn| 0.622  |
 |`model/tfm.py`|Transformer|Transformer|Transformer|  |
 
 </div>
