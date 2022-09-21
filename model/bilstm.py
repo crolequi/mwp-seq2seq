@@ -4,6 +4,7 @@ import torch.nn as nn
 
 from data_preprocess import *
 from torch.utils.data import DataLoader
+from arch.mha import MultiHeadAttention
 from utils import RuleFilter, equation_accuracy, s2hms
 
 
@@ -11,7 +12,7 @@ class Encoder(nn.Module):
     def __init__(self, vocab_size, embed_size, hidden_size=256, num_layers=2, dropout=0.5):
         super().__init__()
         self.emebdding = nn.Embedding(vocab_size, embed_size, padding_idx=PAD_IDX)
-        self.rnn = nn.GRU(embed_size, hidden_size, num_layers=num_layers, dropout=dropout)
+        self.rnn = nn.LSTM(embed_size, hidden_size, num_layers=num_layers, dropout=dropout, bidirectional=True)
 
     def forward(self, encoder_input):
         """
@@ -19,25 +20,29 @@ class Encoder(nn.Module):
             encoder_input: shape (batch_size, seq_len)
         """
         encoder_input = self.emebdding(encoder_input).transpose(0, 1)
-        _, h_n = self.rnn(encoder_input)
-        c_n = torch.zeros_like(h_n)  # The initial hidden state of the LSTM requires c_n.
-        return h_n, c_n
+        encoder_output, (h_n, c_n) = self.rnn(encoder_input)  # (seq_len, batch_size, 2 * hidden_size)
+        h_n = torch.cat((h_n[::2], h_n[1::2]), dim=2)  # (num_layers, batch_size, 2 * hidden_size)
+        c_n = torch.cat((c_n[::2], c_n[1::2]), dim=2)  # (num_layers, batch_size, 2 * hidden_size)
+        return encoder_output, h_n, c_n
 
 
 class Decoder(nn.Module):
     def __init__(self, vocab_size, embed_size, hidden_size=256, num_layers=2, dropout=0.5):
         super().__init__()
         self.embedding = nn.Embedding(vocab_size, embed_size, padding_idx=PAD_IDX)
-        self.rnn = nn.LSTM(embed_size + hidden_size, hidden_size, num_layers=num_layers, dropout=dropout)
-        self.out = nn.Linear(hidden_size, vocab_size)
+        self.attn = MultiHeadAttention(embed_dim=2 * hidden_size, num_heads=8)
+        self.rnn = nn.LSTM(embed_size + 2 * hidden_size, 2 * hidden_size, num_layers=num_layers, dropout=dropout)
+        self.out = nn.Linear(2 * hidden_size, vocab_size)
 
-    def forward(self, encoder_output, decoder_input):
-        h_n, c_n = encoder_output
-        decoder_input = self.embedding(decoder_input).transpose(0, 1)
-        context = h_n[-1]  # (batch_size, hidden_size)
-        context = context.repeat(decoder_input.size(0), 1, 1)  # (seq_len, batch_size, hidden_size)
-        output, (h_n, c_n) = self.rnn(torch.cat((decoder_input, context), -1), (h_n, c_n))
-        logits = self.out(output)  # (seq_len, batch_size, vocab_size)
+    def forward(self, decoder_input, encoder_output, h_n, c_n):
+        decoder_input = self.embedding(decoder_input).transpose(0, 1)  # (seq_len, batch_size, embed_size)
+        decoder_output = torch.zeros(decoder_input.size(0),
+                                     *h_n.shape[1:]).to(decoder_input.device)  # (seq_len, batch_size, 2 * hidden_size)
+        for i in range(len(decoder_output)):
+            context = self.attn(h_n[-1].unsqueeze(0), encoder_output, encoder_output)[0].squeeze(0)  # (batch_size, 2 * hidden_size)
+            single_step_output, (h_n, c_n) = self.rnn(torch.cat((decoder_input[i], context), -1).unsqueeze(0), (h_n, c_n))
+            decoder_output[i] = single_step_output.squeeze()
+        logits = self.out(decoder_output)
         return logits, (h_n, c_n)
 
 
@@ -48,7 +53,7 @@ class Model(nn.Module):
         self.decoder = decoder
 
     def forward(self, encoder_input, decoder_input):
-        return self.decoder(self.encoder(encoder_input), decoder_input)
+        return self.decoder(decoder_input, *self.encoder(encoder_input))
 
 
 def train(train_loader, model, rule_filter, criterion, optimizer, device):
@@ -76,12 +81,12 @@ def inference(test_loader, model, rule_filter, device):
     model.eval()
     for src_seq, tgt_seq in test_loader:
         encoder_input = src_seq.to(device)
-        h_n, c_n = model.encoder(encoder_input)
+        encoder_output, h_n, c_n = model.encoder(encoder_input)
         pred_seq = [BOS_IDX]
         for _ in range(max_tgt_len):
             decoder_input = torch.tensor(pred_seq[-1]).reshape(1, 1).to(device)  # (batch_size, seq_len)=(1, 1)
-            pred, (h_n, c_n) = model.decoder((h_n, c_n),
-                                             decoder_input)  # pred shape: (seq_len, batch_size, tgt_vocab_size)=(1, 1, tgt_vocab_size)
+            pred, (h_n, c_n) = model.decoder(decoder_input, encoder_output, h_n,
+                                             c_n)  # pred shape: (seq_len, batch_size, tgt_vocab_size)=(1, 1, tgt_vocab_size)
             pred = rule_filter.single_filter(decoder_input.squeeze(), pred.squeeze())
             next_token_idx = pred.argmax().item()
             if next_token_idx == EOS_IDX:
@@ -116,7 +121,7 @@ class LRScheduler:
 set_seed()
 BATCH_SIZE = 128
 LEARNING_RATE = 0.01
-NUM_EPOCHS = 100  # One epoch takes about 3 min on RTX 3090 GPU.
+NUM_EPOCHS = 1
 
 train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
 test_loader = DataLoader(test_data, batch_size=1)

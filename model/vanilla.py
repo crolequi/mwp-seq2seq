@@ -116,7 +116,7 @@ class LRScheduler:
 set_seed()
 BATCH_SIZE = 128
 LEARNING_RATE = 0.01
-NUM_EPOCHS = 100  # One epoch takes about 3 min on RTX 3090 GPU.
+NUM_EPOCHS = 100
 
 train_loader = DataLoader(train_data, batch_size=BATCH_SIZE, shuffle=True)
 test_loader = DataLoader(test_data, batch_size=1)

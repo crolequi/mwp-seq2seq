@@ -102,19 +102,16 @@ class RuleFilter(nn.Module):
             rho[self.tgt_vocab[list("+-*/)=")]] = 0  # Set the position corresponding to the illegal token to 0
         # Rule 2
         elif "temp" in prev_token:
-            rho[self.tgt_vocab[list("(=")]] = 0
+            rho[self.tgt_vocab[list("(=") + [f"temp_{alpha}" for alpha in string.ascii_lowercase]]] = 0
         # Rule 3
         elif prev_token == "=":
-            rho[self.tgt_vocab[list("+-*/=)") + [f"temp_{alpha}" for alpha in string.ascii_lowercase]]] = 0
+            rho[self.tgt_vocab[list("+-*/=)")]] = 0
         # Rule 4
         elif prev_token == "(":
             rho[self.tgt_vocab[list("()+-*/=")]] = 0
         # Rule 5
         elif prev_token == ")":
             rho[self.tgt_vocab[list("()") + [f"temp_{alpha}" for alpha in string.ascii_lowercase]]] = 0
-        # Additional Rule
-        elif prev_token == "^":
-            rho[self.tgt_vocab[list("+-*/=)")]] = 0
         else:
             pass
 
