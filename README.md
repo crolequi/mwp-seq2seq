@@ -27,3 +27,24 @@ Take `vanilla.py` as an example, simply run the following commands in the termin
 git clone https://github.com/sonvier/mwp-seq2seq.git && cd mwp-seq2seq
 mkdir params output && nohup python -um model.vanilla > ./output/train.log 2>&1 &
 ```
+
+# Structure
+
+```
+.
+├── README.md
+├── arch
+│   ├── mha.py
+│   └── transformer.py
+├── data
+│   ├── test.json
+│   └── train.json
+├── data_preprocess.py
+├── model
+│   ├── bilstm.py
+│   ├── tfm.py
+│   └── vanilla.py
+└── utils.py
+
+3 directories, 10 files
+```
