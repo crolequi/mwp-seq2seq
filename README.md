@@ -28,7 +28,7 @@ git clone https://github.com/sonvier/mwp-seq2seq.git && cd mwp-seq2seq
 mkdir params output && nohup python -um model.vanilla > ./output/train.log 2>&1 &
 ```
 
-# Structure
+## Structure
 
 ```
 .
